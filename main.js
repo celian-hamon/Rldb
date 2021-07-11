@@ -46,7 +46,7 @@ client.on('message', async message => {
         if (args == "api") {
             //requete a l'api concernant son status
             superagent
-                .get("https://euw1.api.riotgames.com/lol/status/v4/platform-data")
+                .get(riotApiUrl + "/lol/status/v4/platform-data")
                 .set("X-Riot-Token", keys.riot)
                 .then(res => {
                     let timeTaken = Date.now() - message.createdTimestamp //calcule le temps pris pour repondre au message
@@ -59,7 +59,20 @@ client.on('message', async message => {
         end();
     }
 
+    //Commande Level, renvois le niveau d'un joueur
+    if (command === "lvl") {
+        superagent
+            .get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + args)
+            .set("X-Riot-Token", keys.riot)
+            .then(res => {
+                const embed = new Discord.MessageEmbed()
+                    .setAuthor(res.body.name, "http://ddragon.leagueoflegends.com/cdn/11.14.1/img/profileicon/" + res.body.profileIconId + ".png")
+                    .setDescription('level : ' + res.body.summonerLevel)
 
+                message.channel.send(embed);
+            })
+        end();
+    }
 
 
 
