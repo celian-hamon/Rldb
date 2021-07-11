@@ -39,12 +39,33 @@ client.on('message', async message => {
     let author = message.author.username;
 
 
-    //commande qui recupere le joueur 
-    if (command === "info") {
-        superagent
-            .get(riotApiUrl + "/lol/status/v4/platform-data")
-            .set("X-Riot-Token", keys.riot)
-            .then(res => { console.log(res.body) })
+
+    //Commande PING, ping sois l'api sois le bot
+    if (command === "ping") {
+        //commande ping pour l'api
+        if (args == "api") {
+            //requete a l'api concernant son status
+            superagent
+                .get("https://euw1.api.riotgames.com/lol/status/v4/platform-data")
+                .set("X-Riot-Token", keys.riot)
+                .then(res => {
+                    let timeTaken = Date.now() - message.createdTimestamp //calcule le temps pris pour repondre au message
+                    message.reply("l'api a une latence de " + `${timeTaken}ms`); //repond
+                });
+        } else {
+            let timeTaken = Date.now() - message.createdTimestamp //calcule le temps pris pour repondre au message
+            message.reply("le bot a une latence de " + `${timeTaken}ms`); //repond
+        }
+        end();
     }
 
+
+
+
+
+    //fonction supprimant le message et logs la commande avec les arguments et l'auteur 
+    function end() {
+        console.log(`%cCommande : ${command} \nArgs : ${args}\nAuteur : ${author}\n`, "color : red;background-color:white;");
+        message.delete();
+    }
 });
