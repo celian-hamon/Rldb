@@ -1,3 +1,6 @@
+//puuId = 5mdPyMvgiw8hZFT1p0eqoNF8r3f5WEIw01DzhXH1dtz2uK5iztqlK97VN8iDa2QZ1bSvC1guBSRjnw
+//summonerId = qiLkFBeg0NQlvt1gxMo8nk1-bf88fxhoHgqQcJ5JYm0QxEvd
+
 //importe les modules
 const Discord = require("discord.js");
 const keys = require("./keys.json");
@@ -5,6 +8,7 @@ const fs = require("fs");
 const util = require('util');
 const superagent = require("superagent");
 const { url } = require("inspector");
+const { get } = require("superagent");
 
 //crée un client discord
 const client = new Discord.Client();
@@ -68,17 +72,44 @@ client.on('message', async message => {
                 const embed = new Discord.MessageEmbed()
                     .setAuthor(res.body.name, "http://ddragon.leagueoflegends.com/cdn/11.14.1/img/profileicon/" + res.body.profileIconId + ".png")
                     .setDescription('level : ' + res.body.summonerLevel)
-
                 message.channel.send(embed);
             })
         end();
     }
 
+    //Commande Infos, renvois les infos summoner d'un joueur
+    if (command === "infos") {
+        getSummoner("cece3007").then(function(res) {
 
+        })
+        superagent.get(riotApiUrl + "/lol/champion-mastery/v4/champion-masteries/by-summoner/{encryptedSummonerId}" + res.body.id)
+            .set("X-Riot-Token", keys.riot)
+            .then(res2 => {
+                console.log("ok")
+                embed = new Discord.MessageEmbed()
+                    .setAuthor(res.body.name, "http://ddragon.leagueoflegends.com/cdn/11.14.1/img/profileicon/" + res.body.profileIconId + ".png")
+                    .addFields({ name: `${res2.body[0].championId}`, value: `Mastery : ${res2.body[0].championLevel}` }, { name: `${res2.body[1].championId}`, value: `Mastery : ${res2.body[1].championLevel}` }, { name: `${res2.body[2].championId}`, value: `Mastery : ${res2.body[2].championLevel}` });
+                message.channel.send(embed);
+            });
 
+        end();
+    }
     //fonction supprimant le message et logs la commande avec les arguments et l'auteur 
     function end() {
         console.log(`%cCommande : ${command} \nArgs : ${args}\nAuteur : ${author}\n`, "color : red;background-color:white;");
         message.delete();
     }
+
+
+
 });
+
+
+async function getSummoner(name) {
+    try {
+        return await superagent
+            .get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + name)
+            .set("X-Riot-Token", keys.riot);
+    } catch (error) { return "qdljsd"; }
+
+}
