@@ -9,6 +9,8 @@ const util = require('util');
 const superagent = require("superagent");
 const { url } = require("inspector");
 const { get } = require("superagent");
+const { request } = require("http");
+const champs = require("./riot/champion.json");
 
 //crée un client discord
 const client = new Discord.Client();
@@ -17,7 +19,7 @@ const client = new Discord.Client();
 client.login(keys.discord);
 
 //établi le préfixe
-const prefix = "¤";
+const prefix = "!";
 
 //log un message une fois pret et met un status
 client.on("ready", () => {
@@ -70,47 +72,51 @@ client.on('message', async message => {
             .set("X-Riot-Token", keys.riot)
             .then(res => {
                 const embed = new Discord.MessageEmbed()
-                    .setAuthor(res.body.name, "http://ddragon.leagueoflegends.com/cdn/11.14.1/img/profileicon/" + res.body.profileIconId + ".png")
+                    .setAuthor(res.body.name)
+                    .setThumbnail("http://ddragon.leagueoflegends.com/cdn/11.15.1/img/profileicon/" + res.body.profileIconId + ".png")
                     .setDescription('level : ' + res.body.summonerLevel)
                 message.channel.send(embed);
             })
         end();
     }
 
-    //Commande Infos, renvois les infos summoner d'un joueur
-    if (command === "infos") {
-        getSummoner("cece3007").then(function(res) {
 
-        })
-        superagent.get(riotApiUrl + "/lol/champion-mastery/v4/champion-masteries/by-summoner/{encryptedSummonerId}" + res.body.id)
+
+
+    //si la commande est "champ": recupere les champions et leurs nombre de points de maitrise
+    if (command === "champ") {
+        var summonerId = await superagent.get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + args[0]).set("X-Riot-Token", keys.riot).then(res => res.body.id);
+        let request = riotApiUrl + "/lol/champion-mastery/v4/champion-masteries/by-summoner/" + summonerId;
+        console.log(request);
+        superagent.get(request)
             .set("X-Riot-Token", keys.riot)
-            .then(res2 => {
-                console.log("ok")
-                embed = new Discord.MessageEmbed()
-                    .setAuthor(res.body.name, "http://ddragon.leagueoflegends.com/cdn/11.14.1/img/profileicon/" + res.body.profileIconId + ".png")
-                    .addFields({ name: `${res2.body[0].championId}`, value: `Mastery : ${res2.body[0].championLevel}` }, { name: `${res2.body[1].championId}`, value: `Mastery : ${res2.body[1].championLevel}` }, { name: `${res2.body[2].championId}`, value: `Mastery : ${res2.body[2].championLevel}` });
-                message.channel.send(embed);
-            });
+            .then(res => {
+                console.log(getChampionByKey(res.body[0].championId).name);
 
-        end();
+            })
+            .catch(err => { console.log(err); });
     }
-    //fonction supprimant le message et logs la commande avec les arguments et l'auteur 
-    function end() {
-        console.log(`%cCommande : ${command} \nArgs : ${args}\nAuteur : ${author}\n`, "color : red;background-color:white;");
-        message.delete();
-    }
+
+
+
+
+
+
 
 
 
 });
 
+let championByIdCache = {};
+let championJson = require("./riot/champion.json");
+console.log(championJson.type);
 
+//renvois le nom du champion en fonction de son id
+function getChampionByKey(key) {
+    console.log("test")
+    for (var i = 0; i < championJson.data.length; i++) {
+        if (championJson.data[i].key == key) { return championJson.data[i].id; } else { console.log(i); }
+    }
+};
 
-async function getSummoner(name) {
-    try {
-        return await superagent
-            .get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + name)
-            .set("X-Riot-Token", keys.riot);
-    } catch (error) { return "qdljsd"; }
-
-}
+getChampionByKey("19");
