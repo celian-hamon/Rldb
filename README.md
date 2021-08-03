@@ -19,6 +19,8 @@ With RLDB you can get a lot of cool information about league of legend with the 
 
 !save <summoner name>             Add your summoner name to the db so you can use the commands without argument to get your own stats
 !save edit <summoner name>        Edit the current summoner name that you have entered in the database
+
+!last <summoner name>             Give you the last game with many informations
 ````
 
 ## Authors and contributing
