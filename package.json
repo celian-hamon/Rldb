@@ -22,6 +22,7 @@
   "homepage": "https://github.com/skelletondude/lol-discord-bot#readme",
   "dependencies": {
     "discord.js": "^12.5.3",
+    "fetch": "^1.1.0",
     "superagent": "^6.1.0"
   }
 }

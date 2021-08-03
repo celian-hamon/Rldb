@@ -11,7 +11,7 @@ const { url } = require("inspector");
 const { get } = require("superagent");
 const { request } = require("http");
 const champs = require("./riot/champion.json");
-
+const fetch = require("node-fetch");
 //crée un client discord
 const client = new Discord.Client();
 
@@ -28,6 +28,8 @@ client.on("ready", () => {
 });
 
 const riotApiUrl = "https://euw1.api.riotgames.com"
+
+
 
 client.on('message', async message => {
     //Exclus les messages ne commencant pas par le préfix ou provenant d'un bot 
@@ -65,58 +67,101 @@ client.on('message', async message => {
         end();
     }
 
-    //Commande Level, renvois le niveau d'un joueur
-    if (command === "lvl") {
-        superagent
-            .get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + args)
+    //si la commande est "summoner": recupere le summoner et son niveau et ses champions et leurs nombre de points de maitrise
+    if (command === "summoner") {
+        var summoner = await superagent.get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + args[0]).set("X-Riot-Token", keys.riot).then(res => res.body);
+        let request = riotApiUrl + "/lol/champion-mastery/v4/champion-masteries/by-summoner/" + summoner.id;
+        console.log(request);
+
+        var champMastery = await superagent.get(request)
             .set("X-Riot-Token", keys.riot)
             .then(res => {
-                const embed = new Discord.MessageEmbed()
-                    .setAuthor(res.body.name)
-                    .setThumbnail("http://ddragon.leagueoflegends.com/cdn/11.15.1/img/profileicon/" + res.body.profileIconId + ".png")
-                    .setDescription('level : ' + res.body.summonerLevel)
-                message.channel.send(embed);
+                return res.body;
             })
+
+        const firstChampion = await getChampionByKey(champMastery[0].championId, "fr_FR");
+        const secondChampion = await getChampionByKey(champMastery[1].championId, "fr_FR");
+        const thirdChampion = await getChampionByKey(champMastery[2].championId, "fr_FR");
+
+        let embed = new Discord.MessageEmbed()
+            .setAuthor(summoner.name)
+            .addFields({ name: firstChampion.name, value: `${champMastery[0].championPoints}`, inline: false }, { name: secondChampion.name, value: `${champMastery[1].championPoints}`, inline: false }, { name: thirdChampion.name, value: `${champMastery[2].championPoints}`, inline: false })
+            .setThumbnail("http://ddragon.leagueoflegends.com/cdn/11.15.1/img/profileicon/" + summoner.profileIconId + ".png")
+            .setDescription('level : ' + summoner.summonerLevel)
+
+        message.channel.send(embed);
+
         end();
     }
 
 
 
-
-    //si la commande est "champ": recupere les champions et leurs nombre de points de maitrise
-    if (command === "champ") {
-        var summonerId = await superagent.get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + args[0]).set("X-Riot-Token", keys.riot).then(res => res.body.id);
-        let request = riotApiUrl + "/lol/champion-mastery/v4/champion-masteries/by-summoner/" + summonerId;
-        console.log(request);
-        superagent.get(request)
-            .set("X-Riot-Token", keys.riot)
-            .then(res => {
-                console.log(getChampionByKey(res.body[0].championId).name);
-
-            })
-            .catch(err => { console.log(err); });
+    //fonction supprimant le message et logs la commande avec les arguments et l'auteur 
+    function end() {
+        console.log(`Commande : ${command} \nArgs : ${args}\nAuteur : ${author}\n`);
+        message.delete();
     }
-
-
-
-
 
 
 
 
 
 });
-
+//code by Querijn for the champs :)
 let championByIdCache = {};
-let championJson = require("./riot/champion.json");
-console.log(championJson.type);
+let championJson = {};
 
-//renvois le nom du champion en fonction de son id
-function getChampionByKey(key) {
-    console.log("test")
-    for (var i = 0; i < championJson.data.length; i++) {
-        if (championJson.data[i].key == key) { return championJson.data[i].id; } else { console.log(i); }
+async function getLatestChampionDDragon(language = "en_US") {
+
+    if (championJson[language])
+        return championJson[language];
+
+    let response;
+    let versionIndex = 0;
+    do { // I loop over versions because 9.22.1 is broken
+        const version = (await fetch("http://ddragon.leagueoflegends.com/api/versions.json").then(async(r) => await r.json()))[versionIndex++];
+
+        response = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/${language}/champion.json`);
     }
-};
+    while (!response.ok)
 
-getChampionByKey("19");
+    championJson[language] = await response.json();
+    return championJson[language];
+}
+
+async function getChampionByKey(key, language = "en_US") {
+
+    // Setup cache
+    if (!championByIdCache[language]) {
+        let json = await getLatestChampionDDragon(language);
+
+        championByIdCache[language] = {};
+        for (var championName in json.data) {
+            if (!json.data.hasOwnProperty(championName))
+                continue;
+
+            const champInfo = json.data[championName];
+            championByIdCache[language][champInfo.key] = champInfo;
+        }
+    }
+
+    return championByIdCache[language][key];
+}
+
+// NOTE: IN DDRAGON THE ID IS THE CLEAN NAME!!! It's also super-inconsistent, and broken at times.
+// Cho'gath => Chogath, Wukong => Monkeyking, Fiddlesticks => Fiddlesticks/FiddleSticks (depending on what mood DDragon is in this patch)
+async function getChampionByID(name, language = "en_US") {
+    return await getLatestChampionDDragon(language)[name];
+}
+
+async function main() {
+    const annie = await getChampionByKey(1, "en_US");
+    const leona = await getChampionByKey(89, "es_ES");
+    const brand = await getChampionByID("brand");
+
+    console.log(annie);
+    console.log(leona);
+    console.log(brand);
+}
+
+// main();
