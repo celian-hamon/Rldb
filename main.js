@@ -46,6 +46,39 @@ client.on('message', async message => {
     let nickname = member.nickname;
     let author = message.author.username;
 
+    if (command === "save") {
+        if (args[0] === "edit") {
+            let newEntry = {
+                "id": message.author.id,
+                "inGameNick": args[1]
+            };
+            fs.writeFileSync(`./ids/${message.author.id}.json`, JSON.stringify(newEntry, null, 2));
+            message.reply(`:white_check_mark: Your in-game nick has been edited! It is now: ${args[1]}`);
+            end();
+            return
+        }
+        try {
+            let file = `./ids/${message.author.id}.json`
+            require(file)
+            fs.readFile(`./ids/${message.author.id}.json`, 'utf-8', (err, jsonString) => {
+                var fileJson = JSON.parse(jsonString)
+                console.log(fileJson)
+                message.reply(`votre nom ingame est ${fileJson.inGameNick}`)
+                console.log('trouvé')
+            });
+        } catch (error) {
+
+            let newEntry = {
+                "id": message.author.id,
+                "inGameNick": args[0]
+            };
+            fs.writeFileSync(`./ids/${message.author.id}.json`, JSON.stringify(newEntry, null, 2));
+            message.reply(`:white_check_mark: Your in-game nick has been saved! It is now: ${args[0]}`);
+            end();
+        }
+        end();
+    }
+
 
 
     //Commande PING, ping sois l'api sois le bot
@@ -69,9 +102,12 @@ client.on('message', async message => {
 
     //si la commande est "summoner": recupere le summoner et son niveau et ses champions et leurs nombre de points de maitrise
     if (command === "summoner") {
+        if (args.length === 0) {
+            args[0] = await getNick(message.author.id);
+            console.log(args[0] + " issssss");
+        }
         var summoner = await superagent.get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + args[0]).set("X-Riot-Token", keys.riot).then(res => res.body);
         let request = riotApiUrl + "/lol/champion-mastery/v4/champion-masteries/by-summoner/" + summoner.id;
-        console.log(request);
 
         var champMastery = await superagent.get(request)
             .set("X-Riot-Token", keys.riot)
@@ -85,7 +121,7 @@ client.on('message', async message => {
 
         let embed = new Discord.MessageEmbed()
             .setAuthor(summoner.name)
-            .addFields({ name: firstChampion.name, value: `${champMastery[0].championPoints}`, inline: false }, { name: secondChampion.name, value: `${champMastery[1].championPoints}`, inline: false }, { name: thirdChampion.name, value: `${champMastery[2].championPoints}`, inline: false })
+            .addFields({ name: firstChampion.name, value: `${champMastery[0].championPoints}`, inline: true }, { name: secondChampion.name, value: `${champMastery[1].championPoints}`, inline: true }, { name: thirdChampion.name, value: `${champMastery[2].championPoints}`, inline: true })
             .setThumbnail("http://ddragon.leagueoflegends.com/cdn/11.15.1/img/profileicon/" + summoner.profileIconId + ".png")
             .setDescription('level : ' + summoner.summonerLevel)
 
@@ -154,14 +190,26 @@ async function getChampionByID(name, language = "en_US") {
     return await getLatestChampionDDragon(language)[name];
 }
 
-async function main() {
-    const annie = await getChampionByKey(1, "en_US");
-    const leona = await getChampionByKey(89, "es_ES");
-    const brand = await getChampionByID("brand");
+// async function main() {
+//     const annie = await getChampionByKey(1, "en_US");
+//     const leona = await getChampionByKey(89, "es_ES");
+//     const brand = await getChampionByID("brand");
 
-    console.log(annie);
-    console.log(leona);
-    console.log(brand);
+//     console.log(annie);
+//     console.log(leona);
+//     console.log(brand);
+// }
+
+// fonction qui va recuperer le nom ingame du joueur grace a son id dans les fichiers json
+function getNick(id) {
+
+    let file = `./ids/${id}.json`;
+    let players = JSON.parse(fs.readFileSync(file));
+    let nick = players.inGameNick;
+
+    if (!nick) {
+        nick = "";
+    }
+
+    return nick;
 }
-
-// main();
