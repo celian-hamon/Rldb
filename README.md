@@ -35,4 +35,5 @@ you!**
 
 ## Stats
 
-[![Readme Card](https://github-readme-stats.vercel.app/api/pin/?username=skelletondude&repo=Rldb)](https://github.com/skelletondude/Rldb)
+[![Readme Card](https://github-readme-stats.vercel.app/api/pin/?username=skelletondude&repo=Rldb&theme=jolly)](https://github.com/skelletondude/Rldb)
+
