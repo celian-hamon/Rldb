@@ -12,6 +12,7 @@ const { get } = require("superagent");
 const { request } = require("http");
 const champs = require("./riot/champion.json");
 const fetch = require("node-fetch");
+
 //crée un client discord
 const client = new Discord.Client();
 
@@ -24,7 +25,7 @@ const prefix = "!";
 //log un message une fois pret et met un status
 client.on("ready", () => {
     console.log("lol-bot : I am ready!");
-    client.user.setActivity("Kcorp les bests", { type: "WATCHING" });
+    client.user.setActivity("https://github.com/skelletondude/github", { type: "WATCHING" });
 });
 
 const riotApiUrl = "https://euw1.api.riotgames.com"
@@ -46,6 +47,7 @@ client.on('message', async message => {
     let nickname = member.nickname;
     let author = message.author.username;
 
+    //sauvegarde le nom d'invocateur de la personne en prenant son id discord 
     if (command === "save") {
         if (args[0] === "edit") {
             let newEntry = {
@@ -104,7 +106,6 @@ client.on('message', async message => {
     if (command === "summoner") {
         if (args.length === 0) {
             args[0] = await getNick(message.author.id);
-            console.log(args[0] + " issssss");
         }
         var summoner = await superagent.get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + args[0]).set("X-Riot-Token", keys.riot).then(res => res.body);
         let request = riotApiUrl + "/lol/champion-mastery/v4/champion-masteries/by-summoner/" + summoner.id;
@@ -131,6 +132,29 @@ client.on('message', async message => {
     }
 
 
+    //si la command est last alors recuperer la derniere partie et l'envoyer en embed
+    if (command === "last") {
+        if (args.length === 0) {
+            args[0] = await getNick(message.author.id);
+        }
+        summoner = await superagent.get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + args[0]).set("X-Riot-Token", keys.riot).then(res => res.body);
+        lastMatches = await superagent.get(riotApiUrl + "/lol/match/v4/matchlists/by-account/" + summoner.accountId).set("X-Riot-Token", keys.riot).then(res => res.body.matches[0]);
+        lastMatchSpecs = await superagent.get(riotApiUrl + "/lol/match/v4/matches/" + lastMatches.gameId).set("X-Riot-Token", keys.riot).then(res => res.body);
+        gameModes = await superagent.get("https://static.developer.riotgames.com/docs/lol/queues.json").then(res => res.body);
+        let gameMode = gameModes.find(x => x.queueId === lastMatchSpecs.queueId);
+
+        let embed = new Discord.MessageEmbed()
+            .setAuthor(`${summoner.name}`)
+            .setThumbnail("http://ddragon.leagueoflegends.com/cdn/11.15.1/img/profileicon/" + summoner.profileIconId + ".png")
+            .setDescription(`${gameMode.description}`)
+            .addFields({ name: "Champion", value: `${lastMatchSpecs.participants[0].championId}`, inline: true }, { name: "KDA", value: `${lastMatchSpecs.participants[0].stats.kills}/${lastMatchSpecs.participants[0].stats.deaths}/${lastMatchSpecs.participants[0].stats.assists}`, inline: true }, { name: "KP", value: `${lastMatchSpecs.participants[0].stats.kills}/${lastMatchSpecs.participants[0].stats.deaths}`, inline: true }, { name: "Damage", value: `${lastMatchSpecs.participants[0].stats.totalDamageDealtToChampions}`, inline: true }, { name: "Gold", value: `${lastMatchSpecs.participants[0].stats.goldEarned}`, inline: true }, { name: "CS", value: `${lastMatchSpecs.participants[0].stats.totalMinionsKilled}`, inline: true })
+            .setTimestamp()
+            .setFooter(`${lastMatchSpecs.gameId}`)
+
+        message.channel.send(embed);
+        end();
+    }
+
 
     //fonction supprimant le message et logs la commande avec les arguments et l'auteur 
     function end() {
@@ -140,9 +164,10 @@ client.on('message', async message => {
 
 
 
-
-
 });
+
+
+
 //code by Querijn for the champs :)
 let championByIdCache = {};
 let championJson = {};
