@@ -1,7 +1,4 @@
-//puuId = 5mdPyMvgiw8hZFT1p0eqoNF8r3f5WEIw01DzhXH1dtz2uK5iztqlK97VN8iDa2QZ1bSvC1guBSRjnw
-//summonerId = qiLkFBeg0NQlvt1gxMo8nk1-bf88fxhoHgqQcJ5JYm0QxEvd
-
-//importe les modules
+//Importe les modules
 const Discord = require("discord.js");
 const keys = require("./keys.json");
 const fs = require("fs");
@@ -28,12 +25,14 @@ client.on("ready", () => {
     client.user.setActivity("https://github.com/skelletondude/github", { type: "WATCHING" });
 });
 
+//lien pour l'api de riot
 const riotApiUrl = "https://euw1.api.riotgames.com"
 
 
-
+//lors de la reception d'un message
 client.on('message', async message => {
-    //Exclus les messages ne commencant pas par le préfix ou provenant d'un bot 
+
+    //Exclus les messages ne commencant pas par le préfix ou/et provenant d'un bot 
     if (!message.content.startsWith(prefix) || message.author.bot) return;
 
     //split le messages en differentes parties afin de le traiter
@@ -47,17 +46,22 @@ client.on('message', async message => {
     let nickname = member.nickname;
     let author = message.author.username;
 
-    //sauvegarde le nom d'invocateur de la personne en prenant son id discord 
+    //sauvegarde le nom d'invocateur de la personne en utilisant son id discord
     if (command === "save") {
+        if (args[0] === "delete") {
+            let file = `./ids/${message.author.id}.json`;
+            fs.unlinkSync(file);
+            message.reply(":white_check_mark: Vous avez été retiré de la liste des utilisateurs enregistrés avec succés!");
+            return end();
+        }
         if (args[0] === "edit") {
             let newEntry = {
                 "id": message.author.id,
                 "inGameNick": args[1]
             };
             fs.writeFileSync(`./ids/${message.author.id}.json`, JSON.stringify(newEntry, null, 2));
-            message.reply(`:white_check_mark: Your in-game nick has been edited! It is now: ${args[1]}`);
-            end();
-            return
+            message.reply(`:white_check_mark: Votre pseudo ingame à été modifié avec succès! C'est maintenant: ${args[1]}`);
+            return end();
         }
         try {
             let file = `./ids/${message.author.id}.json`
@@ -75,15 +79,14 @@ client.on('message', async message => {
                 "inGameNick": args[0]
             };
             fs.writeFileSync(`./ids/${message.author.id}.json`, JSON.stringify(newEntry, null, 2));
-            message.reply(`:white_check_mark: Your in-game nick has been saved! It is now: ${args[0]}`);
-            end();
+            message.reply(`:white_check_mark: Votre pseudo ingame à été enregistré! C'est maintenant: ${args[0]}`);
         }
         end();
     }
 
 
 
-    //Commande PING, ping sois l'api sois le bot
+    //Commande "ping", ping sois l'api sois le bot
     if (command === "ping") {
         //commande ping pour l'api
         if (args == "api") {
@@ -102,10 +105,13 @@ client.on('message', async message => {
         end();
     }
 
-    //si la commande est "summoner": recupere le summoner et son niveau et ses champions et leurs nombre de points de maitrise
+    //si la commande est "summoner": recupere le summoner,son niveau ,ses champions et leurs nombre de points de maitrise
     if (command === "summoner") {
         if (args.length === 0) {
             args[0] = await getNick(message.author.id);
+        }
+        if (args[0] === null) {
+            return message.reply(":no_entry: Vous n'avez pas indiqué votre pseudo ingame! Utilisez `" + prefix + "save <pseudo ingame>` pour le renseigner ou indiquez le nom d'un invocateur"), end();
         }
         var summoner = await superagent.get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + args[0]).set("X-Riot-Token", keys.riot).then(res => res.body);
         let request = riotApiUrl + "/lol/champion-mastery/v4/champion-masteries/by-summoner/" + summoner.id;
@@ -125,6 +131,7 @@ client.on('message', async message => {
             .addFields({ name: firstChampion.name, value: `${champMastery[0].championPoints}`, inline: true }, { name: secondChampion.name, value: `${champMastery[1].championPoints}`, inline: true }, { name: thirdChampion.name, value: `${champMastery[2].championPoints}`, inline: true })
             .setThumbnail("http://ddragon.leagueoflegends.com/cdn/11.15.1/img/profileicon/" + summoner.profileIconId + ".png")
             .setDescription('level : ' + summoner.summonerLevel)
+            .setTimestamp()
 
         message.channel.send(embed);
 
@@ -132,10 +139,13 @@ client.on('message', async message => {
     }
 
 
-    //si la command est last alors recuperer la derniere partie et l'envoyer en embed
+    //si la command est "last": alors recupere la derniere partie et l'envoie en embed avec beaucoup de statistiques
     if (command === "last") {
         if (args.length === 0) {
             args[0] = await getNick(message.author.id);
+        }
+        if (args[0] === null) {
+            return message.reply(":no_entry: Vous n'avez pas indiqué votre pseudo ingame! Utilisez `" + prefix + "save <pseudo ingame>` pour le renseigner ou indiquez le nom d'un invocateur"), end();
         }
         summoner = await superagent.get(riotApiUrl + "/lol/summoner/v4/summoners/by-name/" + args[0]).set("X-Riot-Token", keys.riot).then(res => res.body);
         lastMatches = await superagent.get(riotApiUrl + "/lol/match/v4/matchlists/by-account/" + summoner.accountId).set("X-Riot-Token", keys.riot).then(res => res.body.matches[0]);
@@ -146,7 +156,7 @@ client.on('message', async message => {
         if (summoner.accountId != lastMatchSpecs.participantIdentities[participantid].player.accountId) { participantid = 0 }
         const champion = await getChampionByKey(lastMatchSpecs.participants[participantid].championId, "fr_FR")
 
-        console.log(champion);
+
         let embed = new Discord.MessageEmbed()
             .setAuthor(`${summoner.name}`)
             .setThumbnail("http://ddragon.leagueoflegends.com/cdn/11.15.1/img/profileicon/" + summoner.profileIconId + ".png")
@@ -164,6 +174,7 @@ client.on('message', async message => {
     function end() {
         console.log(`Commande : ${command} \nArgs : ${args}\nAuteur : ${author}\n`);
         message.delete();
+        return
     }
 
 
@@ -230,15 +241,15 @@ async function getChampionByID(name, language = "en_US") {
 // }
 
 // fonction qui va recuperer le nom ingame du joueur grace a son id dans les fichiers json
+
 function getNick(id) {
 
-    let file = `./ids/${id}.json`;
-    let players = JSON.parse(fs.readFileSync(file));
-    let nick = players.inGameNick;
+    try {
+        let file = `./ids/${id}.json`;
+        let players = JSON.parse(fs.readFileSync(file));
+        let nick = players.inGameNick;
+        return nick;
+    } catch { return nick = null; }
 
-    if (!nick) {
-        nick = "";
-    }
 
-    return nick;
 }
