@@ -142,14 +142,18 @@ client.on('message', async message => {
         lastMatchSpecs = await superagent.get(riotApiUrl + "/lol/match/v4/matches/" + lastMatches.gameId).set("X-Riot-Token", keys.riot).then(res => res.body);
         gameModes = await superagent.get("https://static.developer.riotgames.com/docs/lol/queues.json").then(res => res.body);
         let gameMode = gameModes.find(x => x.queueId === lastMatchSpecs.queueId);
+        var participantid = lastMatchSpecs.participantIdentities.find(x => x.player.accountId === summoner.accountId).participantId;
+        if (summoner.accountId != lastMatchSpecs.participantIdentities[participantid].player.accountId) { participantid = 0 }
+        const champion = await getChampionByKey(lastMatchSpecs.participants[participantid].championId, "fr_FR")
 
+        console.log(champion);
         let embed = new Discord.MessageEmbed()
             .setAuthor(`${summoner.name}`)
             .setThumbnail("http://ddragon.leagueoflegends.com/cdn/11.15.1/img/profileicon/" + summoner.profileIconId + ".png")
             .setDescription(`${gameMode.description}`)
-            .addFields({ name: "Champion", value: `${lastMatchSpecs.participants[0].championId}`, inline: true }, { name: "KDA", value: `${lastMatchSpecs.participants[0].stats.kills}/${lastMatchSpecs.participants[0].stats.deaths}/${lastMatchSpecs.participants[0].stats.assists}`, inline: true }, { name: "KP", value: `${lastMatchSpecs.participants[0].stats.kills}/${lastMatchSpecs.participants[0].stats.deaths}`, inline: true }, { name: "Damage", value: `${lastMatchSpecs.participants[0].stats.totalDamageDealtToChampions}`, inline: true }, { name: "Gold", value: `${lastMatchSpecs.participants[0].stats.goldEarned}`, inline: true }, { name: "CS", value: `${lastMatchSpecs.participants[0].stats.totalMinionsKilled}`, inline: true })
+            .addFields({ name: "Champion", value: `${champion.id}`, inline: true }, { name: "KDA", value: `${lastMatchSpecs.participants[participantid].stats.kills}/${lastMatchSpecs.participants[participantid].stats.deaths}/${lastMatchSpecs.participants[participantid].stats.assists}`, inline: "true" }, { name: "CS", value: `${lastMatchSpecs.participants[participantid].stats.totalMinionsKilled}`, inline: true }, { name: "Gold", value: `${lastMatchSpecs.participants[participantid].stats.goldEarned}`, inline: true }, { name: "Damage", value: `${lastMatchSpecs.participants[participantid].stats.totalDamageDealtToChampions}`, inline: true }, { name: "Vision", value: `${lastMatchSpecs.participants[participantid].stats.visionScore}`, inline: true })
             .setTimestamp()
-            .setFooter(`${lastMatchSpecs.gameId}`)
+            .setFooter(`${lastMatchSpecs.gameVersion}`)
 
         message.channel.send(embed);
         end();
